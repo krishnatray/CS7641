@@ -1,0 +1,5 @@
+Two java classes are provided: NNWeights.java and CSVfile.java.  In addition, there are four data files: trainFeatures_small.csv, trainLabels_samll.csv, testFeatures_small.csv and testLabels_small.csv.
+
+The NNWeights.java class is executable, and has dependencies on the ABAGAIL library which can be found here: https://github.com/pushkar/ABAGAIL
+
+NNWeights reads in the data files, with the help of CSVfile.java, and then executes three optimization algorithms to learn the weights of a multi-layer perceptron network.  In addition, a back propagation method was implemented for comparison.  The output is to the console and provide the run time and accuracy on the test dataset.  Note the the locations of the test files are hardcoded in NNWeights.java and will need to be updated for your environment.

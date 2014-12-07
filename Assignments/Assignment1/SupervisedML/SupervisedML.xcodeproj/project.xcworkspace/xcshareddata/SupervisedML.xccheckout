@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
+	<false/>
+	<key>IDESourceControlProjectIdentifier</key>
+	<string>4533D82C-C762-4BB2-A14C-A47C4D5A28CF</string>
+	<key>IDESourceControlProjectName</key>
+	<string>SupervisedML</string>
+	<key>IDESourceControlProjectOriginsDictionary</key>
+	<dict>
+		<key>0B79D0685DB70F6132315555E8E1E6F9643A5948</key>
+		<string>https://github.com/ClayFlannigan/CS7641.git</string>
+	</dict>
+	<key>IDESourceControlProjectPath</key>
+	<string>Assignments/Assignment1/SupervisedML/SupervisedML.xcodeproj</string>
+	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
+	<dict>
+		<key>0B79D0685DB70F6132315555E8E1E6F9643A5948</key>
+		<string>../../../../..</string>
+	</dict>
+	<key>IDESourceControlProjectURL</key>
+	<string>https://github.com/ClayFlannigan/CS7641.git</string>
+	<key>IDESourceControlProjectVersion</key>
+	<integer>111</integer>
+	<key>IDESourceControlProjectWCCIdentifier</key>
+	<string>0B79D0685DB70F6132315555E8E1E6F9643A5948</string>
+	<key>IDESourceControlProjectWCConfigurations</key>
+	<array>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.git</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>0B79D0685DB70F6132315555E8E1E6F9643A5948</string>
+			<key>IDESourceControlWCCName</key>
+			<string>CS7641</string>
+		</dict>
+	</array>
+</dict>
+</plist>

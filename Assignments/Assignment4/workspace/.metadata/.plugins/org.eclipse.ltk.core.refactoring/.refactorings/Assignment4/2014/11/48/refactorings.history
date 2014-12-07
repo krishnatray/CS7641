@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Rename field &apos;gridWorldTransProb&apos; in &apos;edu.gatech.cs7641.assignment4.Assignment4&apos; to &apos;transitionProb&apos;&#x0A;- Original project: &apos;Assignment4&apos;&#x0A;- Original element: &apos;edu.gatech.cs7641.assignment4.Assignment4.gridWorldTransProb&apos;&#x0A;- Renamed element: &apos;edu.gatech.cs7641.assignment4.Assignment4.transitionProb&apos;&#x0A;- Update references to refactored element&#x0A;- Update textual occurrences in comments and strings" delegate="false" deprecate="false" description="Rename field &apos;gridWorldTransProb&apos;" flags="589830" getter="false" id="org.eclipse.jdt.ui.rename.field" input="/src&lt;edu.gatech.cs7641.assignment4{Assignment4.java[Assignment4^gridWorldTransProb" name="transitionProb" references="true" setter="false" stamp="1417272956427" textual="false" version="1.0"/>
+</session>

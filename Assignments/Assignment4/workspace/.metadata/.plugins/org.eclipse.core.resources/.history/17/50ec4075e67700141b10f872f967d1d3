@@ -1,0 +1,414 @@
+package edu.gatech.cs7641.assignment4;
+
+import java.awt.Color;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.util.List;
+
+import burlap.behavior.singleagent.*;
+import burlap.domain.singleagent.graphdefined.GraphDefinedDomain;
+import burlap.domain.singleagent.gridworld.*;
+import burlap.oomdp.core.*;
+import burlap.oomdp.singleagent.*;
+import burlap.oomdp.singleagent.common.*;
+import burlap.behavior.statehashing.DiscreteStateHashFactory;
+import burlap.behavior.singleagent.learning.*;
+import burlap.behavior.singleagent.learning.tdmethods.*;
+import burlap.behavior.singleagent.planning.*;
+import burlap.behavior.singleagent.planning.commonpolicies.EpsilonGreedy;
+import burlap.behavior.singleagent.planning.commonpolicies.GreedyQPolicy;
+import burlap.behavior.singleagent.planning.deterministic.*;
+import burlap.behavior.singleagent.planning.deterministic.informed.Heuristic;
+import burlap.behavior.singleagent.planning.deterministic.informed.astar.AStar;
+import burlap.behavior.singleagent.planning.deterministic.uninformed.bfs.BFS;
+import burlap.behavior.singleagent.planning.deterministic.uninformed.dfs.DFS;
+import burlap.behavior.singleagent.planning.stochastic.policyiteration.PolicyIteration;
+import burlap.behavior.singleagent.planning.stochastic.valueiteration.ValueIteration;
+import burlap.oomdp.visualizer.Visualizer;
+import burlap.oomdp.auxiliary.StateGenerator;
+import burlap.oomdp.auxiliary.StateParser;
+import burlap.oomdp.auxiliary.common.ConstantStateGenerator;
+import burlap.behavior.singleagent.EpisodeSequenceVisualizer;
+import burlap.behavior.singleagent.auxiliary.StateReachability;
+import burlap.behavior.singleagent.auxiliary.performance.LearningAlgorithmExperimenter;
+import burlap.behavior.singleagent.auxiliary.performance.PerformanceMetric;
+import burlap.behavior.singleagent.auxiliary.performance.TrialMode;
+import burlap.behavior.singleagent.auxiliary.valuefunctionvis.ValueFunctionVisualizerGUI;
+import burlap.behavior.singleagent.auxiliary.valuefunctionvis.common.*;
+import burlap.behavior.singleagent.auxiliary.valuefunctionvis.common.PolicyGlyphPainter2D.PolicyGlyphRenderStyle;
+import burlap.oomdp.singleagent.common.VisualActionObserver;
+
+public class Assignment4 {
+
+	public static final int 			gridWorldWidth 		= 11;
+	public static final int 			gridWorldHeight 	= 11;
+	public static final double			transitionProb 		= 0.9;
+	public static final int 			nGraphLayers 		= 1000;
+	public static final int 			nNodesPerLayer 		= 5;
+	public static final int 			nLearningEpisodes 	= 1000;
+	public static final double			epsilon				= 0.01;
+	public static final double			learningRate		= 0.9;
+	public static final int 			nActions 			= 3;
+	public static final String			outputPath			= "output/";
+	
+	private enum 						MoveAction {LEFT, RIGHT, STRAIGHT, DIAGLEFT, DIAGRIGHT};
+	private boolean[][] 				graphMap = new boolean[nGraphLayers][nNodesPerLayer];
+	
+	private GridWorldDomain 			gwd;
+	private GraphDefinedDomain			gdd;
+	private Domain						gwDomain;
+	private Domain						gdDomain;
+	private StateParser 				gwsp;
+	private StateParser					gdsp;
+	private RewardFunction 				gwrf;
+	private RewardFunction				gdrf;
+	private TerminalFunction			gwtf;
+	private TerminalFunction			gdtf;
+	private StateConditionTest			gwGoalCondition;
+	private StateConditionTest			gdGoalCondition;
+	private State 						gwInitialState;
+	private State						gdInitialState;
+	private DiscreteStateHashFactory	gwHashingFactory;
+	private DiscreteStateHashFactory	gdHashingFactory;
+	
+	
+	public static void main(String[] args) {
+				
+		Assignment4 example = new Assignment4();
+		
+//		example.ValueIterationExample(outputPath);
+//		example.PolicyIterationExample(outputPath);
+		example.QLearningExample(outputPath);
+	
+
+	}
+	
+	public Assignment4(){
+	
+		//create the domain for grid world
+		gwd = new GridWorldDomain(gridWorldWidth, gridWorldHeight);
+		gwd.setMapToFourRooms();
+		gwd.setProbSucceedTransitionDynamics(transitionProb);
+		gwDomain = gwd.generateDomain();
+		
+		//create graph map "obstacles" like this:
+		/*
+		 * 1 1 1 1 1 1 1 1 0 1 1 1 1 1 1 1 0
+		 * 1 1 1 1 1 1 1 1 0 1 1 1 1 1 1 1 0
+		 * 1 1 1 1 0 1 1 1 0 1 1 1 0 1 1 1 0
+		 * 1 1 1 1 0 1 1 1 1 1 1 1 0 1 1 1 1
+		 * 1 1 1 1 0 1 1 1 1 1 1 1 0 1 1 1 1
+		 */
+		for(int layer = 0; layer < nGraphLayers; layer++){
+			for(int node = 0; node < nNodesPerLayer; node++){
+				if (layer % 4 == 0 && layer != 0) {
+					if (layer % 8 == 0) {
+						if (node <= nNodesPerLayer / 2) {
+							graphMap[layer][node] = false;
+						} else {
+							graphMap[layer][node] = true;							
+						}
+					} else {
+						if (node >= nNodesPerLayer / 2) {
+							graphMap[layer][node] = false;							
+						} else {
+							graphMap[layer][node] = true;														
+						} 
+					} 
+				} else {
+					graphMap[layer][node] = true;
+				}
+			}
+		}
+		
+		//create the transitions for the graph
+		gdd = new GraphDefinedDomain(nGraphLayers * nNodesPerLayer + 1); 	// add one for termination node
+		for(int layer = 0; layer < nGraphLayers - 1; layer++){ 				// no transitions on last layer
+			for(int node = 0; node < nNodesPerLayer; node++){
+				int curNode = layer * nNodesPerLayer + node;
+				for (MoveAction a : MoveAction.values()) {
+					int toLayer = layer;
+					int toNode = node;
+					switch (a) {
+					case LEFT: toNode--; break;
+					case RIGHT: toNode++; break;
+					case STRAIGHT: toLayer++; break;
+					case DIAGLEFT: toNode--; toLayer++; break;
+					case DIAGRIGHT: toNode++; toLayer++; break;
+					}
+					if (toNode < nNodesPerLayer && toNode >= 0) {		// action is within bounds
+						if (graphMap[toLayer][toNode]) { 				// action is not into an obstacle
+							gdd.setTransition(curNode, a.ordinal(), toLayer * nNodesPerLayer + toNode, 1.0);
+						}
+					}
+				}
+			}
+		}
+		
+		//generate the graph derived domain
+		gdDomain = gdd.generateDomain();
+		
+		//create the state parser
+		gwsp = new GridWorldStateParser(gwDomain);
+		gdsp = new GraphDefinedStateParser(gdDomain);
+		
+		//define the tasks
+		gwrf = new UniformCostRF();
+		gdrf = new CenterBiasedRF();
+		gwtf = new SinglePFTF(gwDomain.getPropFunction(GridWorldDomain.PFATLOCATION));
+		gdtf = new GraphTermination(nGraphLayers - 1);
+		gwGoalCondition = new TFGoalCondition(gwtf);
+		gdGoalCondition = new TFGoalCondition(gdtf);
+		
+		//set up the initial state of the tasks
+		gwInitialState = GridWorldDomain.getOneAgentOneLocationState(gwDomain);
+		GridWorldDomain.setAgent(gwInitialState, 0, 0);
+		GridWorldDomain.setLocation(gwInitialState, 0, 10, 10);
+		gdInitialState = GraphDefinedDomain.getState(gdDomain, nNodesPerLayer/2);
+		
+		//set up the state hashing systems
+		gwHashingFactory = new DiscreteStateHashFactory();
+		gdHashingFactory = new DiscreteStateHashFactory();
+		gwHashingFactory.setAttributesForClass(GridWorldDomain.CLASSAGENT, 
+				gwDomain.getObjectClass(GridWorldDomain.CLASSAGENT).attributeList); 				
+				
+		//add visual observer
+//		VisualActionObserver observer = new VisualActionObserver(gwDomain, 
+//			GridWorldVisualizer.getVisualizer(gwDomain, gwd.getMap()));
+//		((SADomain)this.gwDomain).setActionObserverForAllAction(observer);
+//		observer.initGUI();		
+			
+	}
+	
+	public void visualize(String outputPath){
+		Visualizer v = GridWorldVisualizer.getVisualizer(gwDomain, gwd.getMap());
+		EpisodeSequenceVisualizer evis = new EpisodeSequenceVisualizer(v, 
+								gwDomain, gwsp, outputPath);
+	}
+		
+	public void ValueIterationExample(String outputPath){
+		
+		if(!outputPath.endsWith("/")){
+			outputPath = outputPath + "/";
+		}
+		
+		long startTime = System.nanoTime();
+		
+		OOMDPPlanner gwPlanner = new ValueIteration(gwDomain, gwrf, gwtf, 0.99, gwHashingFactory, 0.0001, 1000);
+		OOMDPPlanner gdPlanner = new ValueIteration(gdDomain, gdrf, gdtf, 0.99, gdHashingFactory, 0.0001, 1000);
+		gwPlanner.planFromState(gwInitialState);
+		gdPlanner.planFromState(gdInitialState);
+
+		System.out.println("Value iteration time: " + (System.nanoTime() - startTime) / 1E9);
+		
+		//create a Q-greedy policy from the planner
+		Policy gwp = new GreedyQPolicy((QComputablePlanner)gwPlanner);
+		Policy gdp = new GreedyQPolicy((QComputablePlanner)gdPlanner);
+				
+		//record the plan results to a file
+//		gwp.evaluateBehavior(gwInitialState, gwrf, gwtf).writeToFile(outputPath + "gwValueIterationPlan", gwsp);
+//		gdp.evaluateBehavior(gdInitialState, gdrf, gdtf).writeToFile(outputPath + "gdValueIterationPlan", gdsp);
+		writeEpisodeToFile(outputPath + "gwValueIterationPlan", gwsp, gwp.evaluateBehavior(gwInitialState, gwrf, gwtf));
+		writeEpisodeToFile(outputPath + "gdValueIterationPlan", gdsp, gdp.evaluateBehavior(gdInitialState, gdrf, gdtf));
+		
+		//visualize the value function and policy
+//		this.valueFunctionVisualize((QComputablePlanner)gwPlanner, gwp);
+		
+	}
+
+	public void PolicyIterationExample(String outputPath) {
+	
+		if(!outputPath.endsWith("/")) {
+			outputPath = outputPath + "/";
+		}
+		
+		long startTime = System.nanoTime();
+		
+		OOMDPPlanner gwPlanner = new PolicyIteration(gwDomain, gwrf, gwtf, 0.99, gwHashingFactory, 0.0001, 1000, 100);
+		OOMDPPlanner gdPlanner = new PolicyIteration(gdDomain, gdrf, gdtf, 0.99, gdHashingFactory, 0.0001, 1000, 100);
+		gwPlanner.planFromState(gwInitialState);
+		gdPlanner.planFromState(gdInitialState);
+
+		System.out.println("Policy iteration time: " + (System.nanoTime() - startTime) / 1E9);
+		
+		//create a Q-greedy policy from the planners
+		Policy gwp = new GreedyQPolicy((QComputablePlanner)gwPlanner);
+		Policy gdp = new GreedyQPolicy((QComputablePlanner)gdPlanner);
+		
+		//record the plan results to a file
+//		gwp.evaluateBehavior(gwInitialState, gwrf, gwtf).writeToFile(outputPath + "gwPolicyIterationPlan", gwsp);
+//		gdp.evaluateBehavior(gdInitialState, gwrf, gdtf).writeToFile(outputPath + "gdPolicyIterationPlan", gdsp);		
+		writeEpisodeToFile(outputPath + "gwPolicyIterationPlan", gwsp, gwp.evaluateBehavior(gwInitialState, gwrf, gwtf));
+		writeEpisodeToFile(outputPath + "gdPolicyIterationPlan", gdsp, gdp.evaluateBehavior(gdInitialState, gwrf, gdtf));		
+		
+		//visualize the value function and policy
+//		this.valueFunctionVisualize((QComputablePlanner)gwPlanner, gwp);
+	
+	}
+	
+	public void QLearningExample(String outputPath){
+		
+		if(!outputPath.endsWith("/")){
+			outputPath = outputPath + "/";
+		}
+		
+		long startTime = System.nanoTime();
+							
+		//create the learning problem
+		QLearning gwAgent = new QLearning(gwDomain, gwrf, gwtf, 0.99, gwHashingFactory, 0., learningRate, nGraphLayers*10);
+		QLearning gdAgent = new QLearning(gdDomain, gdrf, gdtf, 0.99, gdHashingFactory, 0., learningRate, nGraphLayers*10);
+		gwAgent.setLearningPolicy(new EpsilonGreedy((QComputablePlanner) gwAgent, epsilon));
+		gdAgent.setLearningPolicy(new EpsilonGreedy((QComputablePlanner) gdAgent, epsilon));
+
+		//run learning
+		try {
+			BufferedWriter out = new BufferedWriter(new FileWriter(outputPath + "QLearningIterations.csv"));
+			for(int i = 0; i < nLearningEpisodes; i++){
+				EpisodeAnalysis gwea = gwAgent.runLearningEpisodeFrom(gwInitialState);
+				EpisodeAnalysis gdea = gdAgent.runLearningEpisodeFrom(gdInitialState);
+				out.write("iter, " + i + ", gw, " + gwea.numTimeSteps() + ", gd, " + gdea.numTimeSteps() + "\n");
+			}
+			out.close();
+		} catch(Exception e) {
+			System.err.println(e);
+		}
+					
+		//generate the policy
+		Policy gwp = new GreedyQPolicy((QComputablePlanner)gwAgent);
+		Policy gdp = new GreedyQPolicy((QComputablePlanner)gdAgent);
+		
+		System.out.println("Q-Learning time: " + (System.nanoTime() - startTime) / 1E9);
+		
+		//record the plan results to a file
+//		gwp.evaluateBehavior(gwInitialState, gwrf, gwtf).writeToFile(outputPath + "gwQLearningPlan", gwsp);
+//		gdp.evaluateBehavior(gdInitialState, gdrf, gdtf).writeToFile(outputPath + "gdQLearningPlan", gdsp);		
+		writeEpisodeToFile(outputPath + "gwQLearningPlan", gwsp, gwp.evaluateBehavior(gwInitialState, gwrf, gwtf));
+		writeEpisodeToFile(outputPath + "gdQLearningPlan", gdsp, gdp.evaluateBehavior(gdInitialState, gdrf, gdtf));		
+
+	}
+		
+	public void valueFunctionVisualize(QComputablePlanner planner, Policy p){
+		List <State> allStates = StateReachability.getReachableStates(gwInitialState, 
+			(SADomain)gwDomain, gwHashingFactory);
+		LandmarkColorBlendInterpolation rb = new LandmarkColorBlendInterpolation();
+		rb.addNextLandMark(0., Color.RED);
+		rb.addNextLandMark(1., Color.BLUE);
+		
+		StateValuePainter2D svp = new StateValuePainter2D(rb);
+		svp.setXYAttByObjectClass(GridWorldDomain.CLASSAGENT, GridWorldDomain.ATTX, 
+			GridWorldDomain.CLASSAGENT, GridWorldDomain.ATTY);
+		
+		PolicyGlyphPainter2D spp = new PolicyGlyphPainter2D();
+		spp.setXYAttByObjectClass(GridWorldDomain.CLASSAGENT, GridWorldDomain.ATTX, 
+			GridWorldDomain.CLASSAGENT, GridWorldDomain.ATTY);
+		spp.setActionNameGlyphPainter(GridWorldDomain.ACTIONNORTH, new ArrowActionGlyph(0));
+		spp.setActionNameGlyphPainter(GridWorldDomain.ACTIONSOUTH, new ArrowActionGlyph(1));
+		spp.setActionNameGlyphPainter(GridWorldDomain.ACTIONEAST, new ArrowActionGlyph(2));
+		spp.setActionNameGlyphPainter(GridWorldDomain.ACTIONWEST, new ArrowActionGlyph(3));
+		spp.setRenderStyle(PolicyGlyphRenderStyle.DISTSCALED);
+		
+		ValueFunctionVisualizerGUI gui = new ValueFunctionVisualizerGUI(allStates, svp, planner);
+		gui.setSpp(spp);
+		gui.setPolicy(p);
+		gui.setBgColor(Color.GRAY);
+		gui.initGUI();
+	}
+
+	class GraphTermination implements TerminalFunction{
+
+		protected int termLayer = 0;
+		
+		public GraphTermination(){}
+		
+		public GraphTermination(int termLayer){
+			this.termLayer = termLayer;
+		}
+		
+		@Override
+		public boolean isTerminal(State s) {
+			int gNode = s.getObjectsOfTrueClass(GraphDefinedDomain.CLASSAGENT).get(0).getDiscValForAttribute(GraphDefinedDomain.ATTNODE);
+			return gNode / nNodesPerLayer >= termLayer;
+		}
+	}
+	
+	public class GraphDefinedStateParser implements StateParser {
+
+		protected Domain domain;
+		
+		public GraphDefinedStateParser(Domain domain){
+			this.domain = domain;
+		}
+		
+		@Override
+		public String stateToString(State s) {
+			
+			StringBuffer sbuf = new StringBuffer(256);
+			ObjectInstance agent = s.getObjectsOfTrueClass(GraphDefinedDomain.CLASSAGENT).get(0);
+			String node = GraphDefinedDomain.ATTNODE;
+			sbuf.append(agent.getDiscValForAttribute(node));					
+			return sbuf.toString();
+		}
+
+		@Override
+		public State stringToState(String str) {
+			
+			int node = Integer.parseInt(str);		
+			State s = GraphDefinedDomain.getState(domain, node);
+			return s;
+		}
+	}
+	
+	public class CenterBiasedRF implements RewardFunction {
+
+		public CenterBiasedRF(){}
+		
+		@Override
+		public double reward(State s, GroundedAction a, State sprime) {
+			int node = GraphDefinedDomain.getNodeId(sprime);
+			int reward = - Math.abs((node % nNodesPerLayer) - (nNodesPerLayer / 2)); // 0 for center, negative towards edges
+			if (a.actionName().equals("action0") || a.actionName().equals("action1")) { // penalize left and right moves (forward is better)
+				reward--;
+			}
+			return reward;
+		}
+	}
+	
+	public void writeEpisodeToFile(String path, StateParser sp, EpisodeAnalysis ea){
+		
+		if(!path.endsWith(".episode")){
+			path = path + ".episode";
+		}
+		
+		File f = (new File(path)).getParentFile();
+		if(f != null){
+			f.mkdirs();
+		}
+		
+		try{			
+			String str = this.parseIntoString(sp, ea);
+			BufferedWriter out = new BufferedWriter(new FileWriter(path));
+			out.write(str);
+			out.close();		
+		}catch(Exception e){
+			System.out.println(e);
+		}
+		
+	}
+	
+	public String parseIntoString(StateParser sp, EpisodeAnalysis ea){
+		
+		StringBuffer sbuf = new StringBuffer(256);
+		
+		for(int i = 0; i < ea.stateSequence.size(); i++){		
+			sbuf.append("State:").append(sp.stateToString(ea.stateSequence.get(i)));
+			if(i < ea.stateSequence.size()-1){
+				sbuf.append(" Action:").append(ea.actionSequence.get(i)).append(" Reward:").append(ea.rewardSequence.get(i)).append("\n");
+			}		
+		}
+			
+		return sbuf.toString();	
+		
+	}
+
+}

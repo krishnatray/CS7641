@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<qualifiedTypeNameHistroy>
+<fullyQualifiedTypeName name="java.io.InputStream"/>
+<fullyQualifiedTypeName name="java.io.BufferedReader"/>
+<fullyQualifiedTypeName name="assignment2.ReadCSVMat"/>
+<fullyQualifiedTypeName name="java.util.ArrayList"/>
+<fullyQualifiedTypeName name="java.util.List"/>
+<fullyQualifiedTypeName name="java.util.Iterator"/>
+<fullyQualifiedTypeName name="java.util.Vector"/>
+<fullyQualifiedTypeName name="util.linalg.Vector"/>
+<fullyQualifiedTypeName name="util.linalg.DenseVector"/>
+<fullyQualifiedTypeName name="burlap.behavior.singleagent.planning.stochastic.policyiteration.PolicyIteration"/>
+<fullyQualifiedTypeName name="burlap.domain.singleagent.graphdefined.GraphDefinedDomain"/>
+</qualifiedTypeNameHistroy>

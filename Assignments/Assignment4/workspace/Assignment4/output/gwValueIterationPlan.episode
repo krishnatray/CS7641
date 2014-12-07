@@ -1,0 +1,21 @@
+State:0 0, 10 10 0 Action:north Reward:-1.0
+State:0 1, 10 10 0 Action:north Reward:-1.0
+State:0 2, 10 10 0 Action:north Reward:-1.0
+State:0 3, 10 10 0 Action:north Reward:-1.0
+State:0 4, 10 10 0 Action:east Reward:-1.0
+State:1 4, 10 10 0 Action:north Reward:-1.0
+State:1 5, 10 10 0 Action:north Reward:-1.0
+State:1 6, 10 10 0 Action:east Reward:-1.0
+State:2 6, 10 10 0 Action:east Reward:-1.0
+State:3 6, 10 10 0 Action:east Reward:-1.0
+State:4 6, 10 10 0 Action:north Reward:-1.0
+State:4 7, 10 10 0 Action:north Reward:-1.0
+State:4 8, 10 10 0 Action:east Reward:-1.0
+State:5 8, 10 10 0 Action:east Reward:-1.0
+State:6 8, 10 10 0 Action:north Reward:-1.0
+State:6 9, 10 10 0 Action:east Reward:-1.0
+State:7 9, 10 10 0 Action:east Reward:-1.0
+State:8 9, 10 10 0 Action:east Reward:-1.0
+State:9 9, 10 10 0 Action:north Reward:-1.0
+State:9 10, 10 10 0 Action:east Reward:-1.0
+State:10 10, 10 10 0

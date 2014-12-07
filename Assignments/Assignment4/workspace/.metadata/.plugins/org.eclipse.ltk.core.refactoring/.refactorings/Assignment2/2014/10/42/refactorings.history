@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Rename type &apos;assignment2.ReadCSVMat&apos; to &apos;CSVfile&apos;&#x0A;- Original project: &apos;Assignment2&apos;&#x0A;- Original element: &apos;assignment2.ReadCSVMat&apos;&#x0A;- Renamed element: &apos;assignment2.CSVfile&apos;&#x0A;- Update references to refactored element&#x0A;- Update textual occurrences in comments and strings" description="Rename type &apos;ReadCSVMat&apos;" flags="589830" id="org.eclipse.jdt.ui.rename.type" input="/src&lt;assignment2{ReadCSVMat.java[ReadCSVMat" matchStrategy="1" name="CSVfile" qualified="false" references="true" similarDeclarations="false" stamp="1413075634098" textual="false" version="1.0"/>
+</session>

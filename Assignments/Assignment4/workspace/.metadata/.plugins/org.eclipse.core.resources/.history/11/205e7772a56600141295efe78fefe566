@@ -1,0 +1,157 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import colorsys
+from sklearn import mixture
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
+from sklearn.decomposition import RandomizedPCA
+from sklearn.decomposition import FastICA
+from sklearn.utils import shuffle
+from PIL import Image
+from time import time
+
+clusters = 3
+samples = 1000
+
+def recreate_image(labels, w, h, colors = None):
+    if colors:
+        image = np.zeros((h, w, colors.shape[1]))
+    else:
+        image = np.zeros((h, w))
+    label_idx = 0
+    for i in range(h):
+        for j in range(w):
+            if colors:
+                image[i][j] = colors[labels[label_idx]]
+            else:
+                image[i][j] = labels[label_idx]
+            label_idx += 1
+    return image
+
+def image_show(title, img, colormap=None):
+    plt.figure()
+    plt.title(title)
+    plt.imshow(img, colormap)
+    
+def scatter(title, x, y, colors):
+    plt.figure()
+    plt.title(title)
+    plt.scatter(x, y, c = colors)
+    
+def get_colors(num_colors):
+    colors=np.zeros((num_colors, 3))
+    for i in range(num_colors):
+        hue = float(i) / num_colors
+        lightness = (50 + np.random.rand() * 10) / 100.
+        saturation = (90 + np.random.rand() * 10) / 100.
+        colors[i] = colorsys.hls_to_rgb(hue, lightness, saturation)
+    return colors  
+
+# open image
+img = Image.open("images/1D001.jpg")
+
+# convert to floats instead of the default 8 bits integer coding for plt.imshow
+img_np = np.array(img, dtype=np.float64) / 255;
+
+# transform to a 2D numpy array.
+w, h = tuple(img.size)
+image_array = np.reshape(img_np, (w * h, 3))
+
+# load feature data
+feature_array = np.loadtxt("trainFeatures.csv",  delimiter=",")
+
+# laod labels
+label_array = np.loadtxt("trainLabels.csv", delimiter=",", dtype = int)
+
+# sub sample image
+t0 = time()
+image_array_sample = shuffle(image_array, random_state=0)[:samples]
+feature_array_sample, label_array_sample = shuffle(feature_array, label_array, random_state=0)[:samples]
+print("Subsample: %0.3f" % (time() - t0))
+
+# # K Means
+# t0 = time()
+# kmeans_image = KMeans(n_clusters=clusters, random_state=0).fit(image_array_sample)
+# kmeans_feature = KMeans(n_clusters=clusters, random_state=0).fit(feature_array_sample)
+# print("K Means: %0.3f" % (time() - t0))
+# 
+# # Expectation Maximization
+# t0 = time()
+# em_image = mixture.GMM(n_components=clusters)
+# em_feature = mixture.GMM(n_components=clusters)
+# em_image.fit(image_array_sample)
+# em_feature.fit(feature_array_sample)
+# print("EM: %0.3f" % (time() - t0))
+# 
+# # Predict labels for all points
+# t0 = time()
+# kmeans_labels_image = kmeans_image.predict(image_array)
+# kmeans_labels_feature = kmeans_feature.predict(feature_array)
+# kmeans_labels_image_sample = kmeans_image.predict(image_array_sample)
+# kmeans_labels_feature_sample = kmeans_feature.predict(feature_array_sample)
+# em_labels_image = em_image.predict(image_array)
+# em_labels_feature = em_feature.predict(feature_array)
+# print("Predictions: %0.3f" % (time() - t0))
+
+# PCA
+t0 = time()
+PCA_feature = PCA(n_components=2)
+PCA_image = PCA(n_components=1)
+PCA_transform_feature = PCA_feature.fit_transform(feature_array_sample)
+PCA_transform_image = PCA_image.fit_transform(image_array)     
+image_show("PCA 1 Component Image", recreate_image(PCA_transform_image, w, h), 'gray')
+print("PCA Explained Variance: ")
+print(PCA_feature.explained_variance_ratio_)
+print(PCA_image.explained_variance_ratio_)
+print("PCA: %0.3f" % (time() - t0))
+
+# Randomized PCA
+t0 = time()
+RPCA_feature = RandomizedPCA(n_components=2)
+RPCA_transform_feature = RPCA_feature.fit_transform(feature_array_sample)
+print("Randomized PCA Explained Variance: ")
+print(RPCA_feature.explained_variance_ratio_)
+print("Randomized PCA: %0.3f" % (time() - t0))
+
+
+# ICA
+t0 = time()
+time = np.linspace(0, 2 * np.pi, samples)
+signal1 = np.sin(2 * time)
+signal2 = np.sign(np.cos(5 * time))
+signal1 += 0.1 * np.random.normal(size=signal1.shape)
+signal2 += 0.1 * np.random.normal(size=signal2.shape)
+observation = np.c_[signal1, signal2]
+mixing = np.array([[1, .8], [1, .5]])
+observation = np.dot(observation, mixing.T)
+ICA = FastICA(n_components=2)
+ICA_transform = ICA.fit_transform(observation)
+#print("ICA: %0.3f" % (time() - t0))
+plt.figure()
+plt.subplot(4,1,1)
+plt.title("Signal1")
+plt.plot(signal1)
+plt.subplot(4,1,2)
+plt.title("Signal2")
+plt.plot(signal2)
+plt.subplot(4,1,3)
+plt.title("Observation")
+plt.plot(observation)
+plt.subplot(4,1,4)
+plt.title("ICA Recovered")
+plt.plot(ICA_transform)
+plt.show()
+
+  
+
+#random_colormap = np.random.rand(clusters, 3)
+# random_colormap = get_colors(clusters)
+# image_show("Original Image", img)
+# image_show("K-Means from RGB", recreate_image(kmeans_labels_image, w, h, kmeans_image.cluster_centers_))
+# image_show("K-Means from Features", recreate_image(kmeans_labels_feature, w, h, random_colormap))
+# image_show("EM from RGB", recreate_image(em_labels_image, w, hem_image.means_))
+# image_show("EM from Features", recreate_image(em_labels_feature, w, h, random_colormap))
+# scatter("Red & Blue Channels K-Means", image_array_sample[:,0], image_array_sample[:,1], random_colormap[kmeans_labels_image_sample[:]])
+# scatter("Features K-Means", feature_array_sample[:,0], feature_array_sample[:,1], random_colormap[kmeans_labels_feature_sample[:]])
+# scatter("Features PCA 2 Component", PCA_transform_feature[:,0], PCA_transform_feature[:,1], random_colormap[label_array_sample[:]])
+# plt.show()
